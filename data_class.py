@@ -37,7 +37,7 @@ class unstruct_data(object):
         for i in range(self.getNumElements()):
             ind = i + 2 + 1 + self.getNumPoints()
             elems = read_data[ind].split()
-            for j in range (self.getNumEdges()):
+            for j in range(self.getNumEdges()):
                 self.elements[j].append(elems[j])
 
     def write_tec(self, filename):
@@ -48,7 +48,11 @@ class unstruct_data(object):
                 f_out.write('{} {} {}\n'.format(self.points[0][i], self.points[1][i], self.points[2][i]))
             f_out.write('\n')
             for i in range(self.getNumElements()):
-                f_out.write('{} {} {} {}\n'.format(self.elements[0][i], self.elements[1][i], self.elements[2][i], self.elements[3][i]))
+                elems_line = ''
+                for j in range(self.getNumEdges()):
+                    elems_line += '  {a[' + str(j) + '][' + str(i) + ']}   '
+                elems_line += '\n'
+                f_out.write(elems_line.format(a = self.elements))
 
     def getNumElements(self):
         return self.numElements
