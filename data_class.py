@@ -1,14 +1,5 @@
 import bisect
 
-class point(object):
-    def __init__(self, x, y, z):
-        self.x = x
-        self.x = y
-        self.x = z
-    def distance(self, other):
-        return ((self.x - other.x)**2 + (self.y - other.y)**2 + (self.z - other.z)**2)**0.5
-
-
 
 class unstruct_data(object):
     def __init__(self, edges):
@@ -24,7 +15,24 @@ class unstruct_data(object):
         self.line2 = ''
         self.numElements = 0
         self.numPoints = 0
+        self.numPointsWithData = 0
         self.numEdges = edges
+
+    def bisect_search_point(self, point, tolerance, nonFoundPoints):
+        for j in range(len(point)): point[j] = float(point[j])
+        x2 = point[0]
+        y2 = point[1]
+        z2 = point[2]
+
+        for i in nonFoundPoints:
+            x1 = self.points[i][0]
+            y1 = self.points[i][1]
+            z1 = self.points[i][2]
+            dist = ((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2) ** 0.5
+            if dist < tolerance:
+                return True, i
+        return False, -2
+
 
     def bisect_insert_point(self, point):
         for j in range(len(point)): point[j] = float(point[j])
@@ -36,6 +44,7 @@ class unstruct_data(object):
 
 
     def read_tec(self, filename):
+        print('Reading unformatted tecplot file "{}"'.format(filename))
         with open(filename, 'r') as f_in:
             read_data = f_in.readlines()
         element_type = read_data[0].split()[6].lstrip('ET=')
@@ -65,6 +74,7 @@ class unstruct_data(object):
             self.elements.append(elems)
 
     def write_tec(self, filename):
+        print('Writing unformatted tecplot file "{}"'.format(filename))
         with open(filename, 'w') as f_out:
             f_out.write(self.line1)
             f_out.write(self.line2)
@@ -79,32 +89,8 @@ class unstruct_data(object):
                 f_out.write(elems_line.format(e = self.elements[i]))
 
 
-    def write_elem_data(self, filename):
-        with open(filename, 'w') as f_out:
-            for i in range(self.getNumElemVars()):
-                for j in range(self.getNumEdges()):
-                    elems_line += '  {e[' + str(j) + ']}  '
-            elems_line += '\n'
-            for i in range(self.getNumElements()):
-                f_out.write(elems_line.format(e = self.elements[i]))
-    def getNumElements(self):
-        return self.numElements
-    def getNumPoints(self):
-        return self.numPoints
-    def getNumEdges(self):
-        return self.numEdges
-    def getNumPointVars(self):
-        return self.numPointVars
-    def getNumElemVars(self):
-        return self.numElemVars
-    def getElemVars(self):
-        return self.elemVariables[:]
-    def getPointVars(self):
-        return self.pointVariables[:]
-
-
-
     def read_stl(self, filename):
+        print('reading stl file'.format(filename))
         with open(filename, 'r') as f_in:
             read_data = f_in.readlines()
 
@@ -125,12 +111,7 @@ class unstruct_data(object):
 
             for point in range(3):
                 stringData = read_data.pop().split()[1:]
-                # try:
-                #     pointIndex = self.points.index(stringData)
-                # except ValueError:
-                #     self.points.append(stringData)
-                #     pointIndex = len(self.points) - 1
-                pointIndex = self.bisect_insert_point(stringData)
+                self.bisect_insert_point(stringData)
                 element.append(stringData)
             read_data.pop()
             read_data.pop()
@@ -149,48 +130,94 @@ class unstruct_data(object):
         self.elemVariables = ['S_x', 'S_y', 'S_z']
         self.numElemVars = len(self.elemVariables)
 
+    def prepare_point_data(self):
+        for point in self.points:
+            self.pointData.append([])
+
     def add_solution_data(self, filename, tolerance):
+        print('Reading tecplot file "{}"'.format(filename))
+        nonFoundPoints = [i for i in range(len(self.points))]
         with open(filename, 'r') as f_in:
             read_data = f_in.readlines()
-        string_data = ['#']
+        stringData = ['#']
         ind = 0
-        while string_data[0] == '#':
-            string_data = read_data[ind].split()
+        while stringData[0] == '#':
+            stringData = read_data[ind].split()
             ind += 1
-        self.pointVariables.append(string_data[2])
-        self.pointVariables.append(string_data[3])
+        self.pointVariables.append(stringData[2])
+        self.pointVariables.append(stringData[3])
         while read_data[ind].split()[0] != 'zone':
             self.pointVariables.append(read_data[ind][:-1])
             ind += 1
+        while ind != len(read_data):
+            ind = self.readZone(ind, read_data, tolerance, nonFoundPoints)
+            ind += 1
+
+
+    def readZone(self, ind, read_data, tolerance, nonFoundPoints):
+        stringData = read_data[ind].split()
+        Ni, Nj = int(stringData[2]), int(stringData[4])
+        self.numPointVars = len(self.getPointVars())
         ind += 1
-        Ni, Nj = read_data[ind].split()[2], read_data[ind].split()[4]
-        self.numPointVars = len(self.getPointVariables)
-        ind += 1
-        zoneName = read_data[ind]
+        zoneName = read_data[ind].strip('T=" \n')
+        print('Scanning zone "{}"'.format(zoneName))
+        print('Number of points: {}'.format(Ni*Nj))
         foundPoints = 0
+        self.prepare_point_data()
         for i in range(Ni):
             for j in range(Nj):
+                if ind % 1000 == 0: print(ind)
                 ind += 1
-                string.data = read_data[ind].split()
-                x = float(string_data[0])
-                y = float(string_data[1])
-                z = float(string_data[2])
+                stringData = read_data[ind].split()[:3]
 
-                point = Point(x, y, z)
+                pointData = stringData[-1]
 
-                pointData = string_data[3:]
+                found, i = self.bisect_search_point(stringData, tolerance, nonFoundPoints)
 
-                for i in range(self.getNumPoints()):
-                    vertex = self.points[i]
-                    point2 = Point(vertex[0], vertex[1], vertex[2])
+                if found:
+                    foundPoints += 1
+                    #nonFoundPoints.remove(i)
+                else:
+                    print(i)
 
-                    if point.distance(point2) <= tolerance:
-                        found_points += 1
-                        self.pointData[i].append(pointData)
-                        break
+                self.pointData[i].append(pointData)
+                a = 123
+        self.numPointsWithData += foundPoints
 
+        print('Found points for {}, out of {} in this zone'.format(foundPoints, Ni*Nj))
+        print('Total found points in this geometry: {} out of {}'.format(self.getNumPointsWithData(), self.getNumPoints()))
 
+        return ind
 
+    def write_tec_data(self, filename):
+        print('Writing unformatted tecplot file "{}"'.format(filename))
+        with open(filename, 'w') as f_out:
+            f_out.write('variables = p')
+            f_out.write(self.line1)
+            f_out.write(self.line2)
+            for i in range(self.getNumPoints()):
+                f_out.write('{p[0]} {p[1]} {p[2]} {d}\n'.format(p = self.points[i], d = self.pointData[i] ))
+            f_out.write('\n')
+            elems_line = ''
+            for j in range(self.getNumEdges()):
+                elems_line += '  {e[' + str(j) + ']}  '
+            elems_line += '\n'
+            for i in range(self.getNumElements()):
+                f_out.write(elems_line.format(e = self.elements[i]))
 
-
-        print(1)
+    def getNumElements(self):
+        return self.numElements
+    def getNumPoints(self):
+        return self.numPoints
+    def getNumEdges(self):
+        return self.numEdges
+    def getNumPointVars(self):
+        return self.numPointVars
+    def getNumElemVars(self):
+        return self.numElemVars
+    def getNumPointsWithData(self):
+        return self.numPointsWithData
+    def getElemVars(self):
+        return self.elemVariables[:]
+    def getPointVars(self):
+        return self.pointVariables[:]
