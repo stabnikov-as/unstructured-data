@@ -18,13 +18,13 @@ class unstruct_data(object):
         self.numPointsWithData = 0
         self.numEdges = edges
 
-    def bisect_search_point(self, point, tolerance, nonFoundPoints):
+    def bisect_search_point(self, point, tolerance):
         for j in range(len(point)): point[j] = float(point[j])
         x2 = point[0]
         y2 = point[1]
         z2 = point[2]
 
-        for i in nonFoundPoints:
+        for i in range(self.getNumPoints()):
             x1 = self.points[i][0]
             y1 = self.points[i][1]
             z1 = self.points[i][2]
@@ -99,6 +99,7 @@ class unstruct_data(object):
         elementsTmp = []
         read_data.pop(0)
         read_data.pop(-1)
+        points_str = []
         self.numElements = len(read_data)//7
         print('Numelements = {}'.format(self.getNumElements()))
         for i in range(self.getNumElements()):
@@ -109,19 +110,19 @@ class unstruct_data(object):
             read_data.pop()
             element = []
 
-            for point in range(3):
-                stringData = read_data.pop().split()[1:]
+            for m in range(3):
+                point = read_data.pop().split()[1:]
+                try:
+                    i = points_str.index(point)
+                except ValueError:
+                    points_str.append(stringData)
+#                    for j in range(len(point)): point[j] = float(point[j])
+                    self.points.append(point)
+                element.append(i)
                 self.bisect_insert_point(stringData)
-                element.append(stringData)
             read_data.pop()
             read_data.pop()
-            elementsTmp.append(element)
-        for element in elementsTmp:
-            elemIndex = []
-            for i in range(3):
-                pointIndex = self.bisect_insert_point(element[i])
-                elemIndex.append(pointIndex+1)
-            self.elements.append(elemIndex)
+            self.elements.append(element)
         self.numPoints = len(self.points)
         for i in range(self.getNumPoints()):
             for j in range(len(self.points[i])): self.points[i][j] = float(self.points[i][j])
@@ -136,7 +137,6 @@ class unstruct_data(object):
 
     def add_solution_data(self, filename, tolerance):
         print('Reading tecplot file "{}"'.format(filename))
-        nonFoundPoints = [i for i in range(len(self.points))]
         with open(filename, 'r') as f_in:
             read_data = f_in.readlines()
         stringData = ['#']
@@ -150,11 +150,11 @@ class unstruct_data(object):
             self.pointVariables.append(read_data[ind][:-1])
             ind += 1
         while ind != len(read_data):
-            ind = self.readZone(ind, read_data, tolerance, nonFoundPoints)
+            ind = self.readZone(ind, read_data, tolerance)
             ind += 1
 
 
-    def readZone(self, ind, read_data, tolerance, nonFoundPoints):
+    def readZone(self, ind, read_data, tolerance):
         stringData = read_data[ind].split()
         Ni, Nj = int(stringData[2]), int(stringData[4])
         self.numPointVars = len(self.getPointVars())
@@ -168,20 +168,19 @@ class unstruct_data(object):
             for j in range(Nj):
                 if ind % 1000 == 0: print(ind)
                 ind += 1
-                stringData = read_data[ind].split()[:3]
+                stringData = read_data[ind].split()
 
                 pointData = stringData[-1]
 
-                found, i = self.bisect_search_point(stringData, tolerance, nonFoundPoints)
+                found, i = self.bisect_search_point(stringData[:-1], tolerance)
 
                 if found:
                     foundPoints += 1
-                    #nonFoundPoints.remove(i)
+                    self.pointData[i].append(pointData)
                 else:
                     print(i)
 
-                self.pointData[i].append(pointData)
-                a = 123
+
         self.numPointsWithData += foundPoints
 
         print('Found points for {}, out of {} in this zone'.format(foundPoints, Ni*Nj))
@@ -196,7 +195,7 @@ class unstruct_data(object):
             f_out.write(self.line1)
             f_out.write(self.line2)
             for i in range(self.getNumPoints()):
-                f_out.write('{p[0]} {p[1]} {p[2]} {d}\n'.format(p = self.points[i], d = self.pointData[i] ))
+                f_out.write('{p[0]} {p[1]} {p[2]} {d[0]}\n'.format(p = self.points[i], d = self.pointData[i] ))
             f_out.write('\n')
             elems_line = ''
             for j in range(self.getNumEdges()):
