@@ -7,9 +7,10 @@ b = unstruct_data(3)
 #b.write_tec('from_stl_test.tec')
 b.read_tec('from_stl_wing_surface1.tec')
 #b.write_tec('from_stl_wing_surface1.tec')
-b.add_solution_data('tenaca_t-00000001.tec', 1.0e-7)
-#b.add_solution_data('tenaca_t-00000002.tec', 1.0e-8)
-#b.write_tec_data('tec_with_data.tec')
+tolerance = 2.0e-6
+b.add_solution_data('tenaca_t-00000001.tec', tolerance)
+b.add_solution_data('tenaca_t-00000002.tec', tolerance)
+b.write_tec_data('tec_with_data.tec')
 
 
 print(b.minimal_distance())

@@ -37,7 +37,7 @@ class unstruct_data(object):
             dist = min(dist1, dist2, dist3)
             if dist < minimum: minimum = dist
 
-
+        self.minEdgeLength = minimum
         return minimum
 
     def bisect_search_point(self, point, tolerance):
@@ -70,6 +70,7 @@ class unstruct_data(object):
 
     def read_tec(self, filename):
         print('Reading unformatted tecplot file "{}"'.format(filename))
+
         with open(filename, 'r') as f_in:
             read_data = f_in.readlines()
         element_type = read_data[0].split()[6].lstrip('ET=')
@@ -159,7 +160,7 @@ class unstruct_data(object):
 
     def add_solution_data(self, filename, tolerance):
         print('Reading tecplot file "{}"'.format(filename))
-        notFoundPoints = [i for i in range(self.getNumPoints())]
+        #tolerance = self.getMinEdgeLen()
         with open(filename, 'r') as f_in:
             read_data = f_in.readlines()
         stringData = ['#']
@@ -173,11 +174,11 @@ class unstruct_data(object):
             self.pointVariables.append(read_data[ind][:-1])
             ind += 1
         while ind != len(read_data):
-            ind = self.readZone1(ind, read_data, tolerance, notFoundPoints)
+            ind = self.readZone(ind, read_data, tolerance)
             ind += 1
 
 
-    def readZone1(self, ind, read_data, tolerance, notFoundPoints):
+    def readZone1(self, ind, read_data, tolerance):
         stringData = read_data[ind].split()
         Ni, Nj = int(stringData[2]), int(stringData[4])
         self.numPointVars = len(self.getPointVars())
@@ -189,7 +190,6 @@ class unstruct_data(object):
         self.prepare_point_data()
         for i in range(Ni):
             for j in range(Nj):
-                #a = len(notFoundPoints)
                 if ind % 1000 == 0: print(ind)
                 ind += 1
                 stringData = read_data[ind].split()
@@ -212,50 +212,51 @@ class unstruct_data(object):
                 #     notFoundPoints.remove(i)
                 # else:
                 #     print(i)
+        return ind
 
-        def readZone(self, ind, read_data, tolerance, notFoundPoints):
-            stringData = read_data[ind].split()
-            Ni, Nj = int(stringData[2]), int(stringData[4])
-            self.numPointVars = len(self.getPointVars())
-            ind += 1
-            zoneName = read_data[ind].strip('T=" \n')
-            print('Scanning zone "{}"'.format(zoneName))
-            print('Number of points: {}'.format(Ni * Nj))
-            foundPoints = 0
-            self.prepare_point_data()
-            for i in range(Ni):
-                for j in range(Nj):
-                    # a = len(notFoundPoints)
-                    if ind % 1000 == 0: print(ind)
-                    ind += 1
-                    stringData = read_data[ind].split()
+    def readZone(self, ind, read_data, tolerance):
+        stringData = read_data[ind].split()
+        Ni, Nj = int(stringData[2]), int(stringData[4])
+        self.numPointVars = len(self.getPointVars())
+        ind += 1
+        zoneName = read_data[ind].strip('T=" \n')
+        print('Scanning zone "{}"'.format(zoneName))
+        print('Number of points: {}'.format(Ni * Nj))
+        foundPoints = 0
+        self.prepare_point_data()
+        for i in range(Ni):
+            for j in range(Nj):
+                if ind % 1000 == 0:
+                    print(ind)
+                ind += 1
+                stringData = read_data[ind].split()
 
-                    pointData = stringData[-1]
+                pointData = stringData[3:]
 
-                    found, i = self.bisect_search_point(stringData[:-1], tolerance, notFoundPoints)
+                found, index = self.bisect_search_point(stringData[:3], tolerance)
 
-                    if found:
-                        foundPoints += 1
-                        self.pointData[i].append(pointData)
-                        notFoundPoints.remove(i)
-                    else:
-                        print(i)
+                if found:
+                    foundPoints += 1
+                    for variable in range(len(pointData)):
+                        self.pointData[index].append(float(pointData[variable]))
+                else:
+                    print(index)
 
         self.numPointsWithData += foundPoints
 
         print('Found points for {}, out of {} in this zone'.format(foundPoints, Ni*Nj))
-        print('Total found points in this geometry: {} out of {}'.format(self.getNumPointsWithData(), self.getNumPoints()))
+        print('Total found points in this geometry: {} out of 78607'.format(self.getNumPointsWithData()))#, self.getNumPoints()))
 
         return ind
 
     def write_tec_data(self, filename):
         print('Writing unformatted tecplot file "{}"'.format(filename))
         with open(filename, 'w') as f_out:
-            f_out.write('variables = p')
+            f_out.write('variables =X, Y, Z,  p\n')
             f_out.write(self.line1)
             f_out.write(self.line2)
             for i in range(self.getNumPoints()):
-                f_out.write('{p[0]} {p[1]} {p[2]} {d[0]}\n'.format(p = self.points[i], d = self.pointData[i] ))
+                f_out.write('{p[0]} {p[1]} {p[2]} {d[0]}\n'.format(p = self.points[i], d = self.pointData[i]))
             f_out.write('\n')
             elems_line = ''
             for j in range(self.getNumEdges()):
@@ -280,3 +281,5 @@ class unstruct_data(object):
         return self.elemVariables[:]
     def getPointVars(self):
         return self.pointVariables[:]
+    def getMinEdgeLen(self):
+        return self.minEdgeLength
