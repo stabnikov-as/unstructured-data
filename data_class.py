@@ -96,7 +96,6 @@ class unstruct_data(object):
 
         self.numEdges = 3
         self.__init__(self.getNumEdges())
-        elementsTmp = []
         read_data.pop(0)
         read_data.pop(-1)
         points_str = []
@@ -114,12 +113,14 @@ class unstruct_data(object):
                 point = read_data.pop().split()[1:]
                 try:
                     i = points_str.index(point)
+                    element.append(i)
+
                 except ValueError:
-                    points_str.append(stringData)
+                    points_str.append(point)
 #                    for j in range(len(point)): point[j] = float(point[j])
                     self.points.append(point)
-                element.append(i)
-                self.bisect_insert_point(stringData)
+                    element.append(len(self.points) - 1)
+               # self.bisect_insert_point(stringData)
             read_data.pop()
             read_data.pop()
             self.elements.append(element)
@@ -130,6 +131,7 @@ class unstruct_data(object):
         self.line2 =  'T="Block_1         "\n'
         self.elemVariables = ['S_x', 'S_y', 'S_z']
         self.numElemVars = len(self.elemVariables)
+        #self.points.sort()
 
     def prepare_point_data(self):
         for point in self.points:
