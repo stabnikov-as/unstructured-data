@@ -33,6 +33,8 @@ class unstruct_data(object):
         '''
         print('Reading unformatted tecplot file "{}"'.format(filename))
 
+        isData = False
+
         with open(filename, 'r') as f_in:
             read_data = f_in.readlines()
         element_type = read_data[0].split()[6].lstrip('ET=')
@@ -48,8 +50,8 @@ class unstruct_data(object):
             self.pointVariables = read_data[0].split()[1:]
             self.pointVariables[0].lstrip(' =')
             ind0 = 1
-        self.line1 = read_data[ind0]
-        self.line2 = read_data[ind0 + 1]
+        self.line2 = read_data[ind0]
+        self.line3 = read_data[ind0 + 1]
         self.numPoints = int(read_data[ind0].split()[2])
         self.numElements = int(read_data[ind0].split()[4])
         if len(read_data[ind0+2].split()) > 3: isData = True
@@ -188,8 +190,6 @@ class unstruct_data(object):
             for i in range(self.getNumElements()):
                 f_out.write('{p[0]} {p[1]} {p[2]}\n'.format(p = self.elemData[i]))
             f_out.write('\n')
-
-
 
 
     ##INTERPOLATING FROM TECPLOT

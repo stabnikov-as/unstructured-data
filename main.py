@@ -21,9 +21,10 @@ b = unstruct_data(3)
 #b.write_element_data('surface_elem_data.tec')
 
 ### If STL IS THE SAME
-#b.read_tec('from_stl_wing_surface.tec')
-#b.read_element_data('surface_elem_data.tec')
-
+b.read_tec('from_stl_wing_surface.tec')
+b.read_element_data('surface_elem_data.tec')
+b.write_tec('from_stl_wing_surface1.tec')
+b.write_element_data('surface_elem_data1.tec')
 
 ##################
 #     STEP 2     #
