@@ -2,6 +2,8 @@ from data_class import *
 
 # Tolerance for serching for points in tecplot file
 tolerance = 2.0e-6
+
+
 # Make an instance of unstructured data
 b = unstruct_data(3)
 
@@ -12,40 +14,67 @@ b = unstruct_data(3)
 #     STEP 1     #
 ##################
 #################################
-#    READING STL SURFACE FILE   #
+#    LOADING STL SURFACE FILE   #
 #################################
 
-### If STL/SURFACE GRID CHANGED
+####OPTION 1####
+## If STL/SURFACE grid changed##
 #b.read_stl('surface_A.stl') # Takes ~ 40 minutes
 #b.write_tec('from_stl_wing_surface.tec')
 #b.write_element_data('surface_elem_data.tec')
 
-### If STL IS THE SAME
+####OPTION 2####
+## If stl is the same ###
 b.read_tec('from_stl_wing_surface.tec')
 b.read_element_data('surface_elem_data.tec')
-b.write_tec('from_stl_wing_surface1.tec')
-b.write_element_data('surface_elem_data1.tec')
 
 ##################
 #     STEP 2     #
 ##################
 ###########################################
-#    READING TECPLOT FILE FROM NTS CODE   #
+#    LOADING TECPLOT FILE FROM NTS CODE   #
 ###########################################
 
-### IF NEW FIELDS OR ADDITIONAL FIELD DATA
-## Add field (surface) data from structured NTS tecplot files
+####OPTION 1####
+## No interfaces calculated yet (New grid, New solution) ##
+# !!!!!! WILL OVERWRITE EXISTING INTERFACES !!!!!!!!!
+# !!!!!!        NEED TO BACK THEM UP        !!!!!!!!!
 #b.add_solution_data('tenaca_t-00000001.tec', tolerance) # Takes ~ 1 hour
 #b.add_solution_data('tenaca_t-00000002.tec', tolerance) # Takes ~ 1 hour
+## Write unstructured teclot file with field variables data
+#b.write_tec('tec_with_data.tec')
+########
 
-## Write unstructured teclot file with data
-#b.write_tec_data('tec_with_data.tec')
+####OPTION 2####
+## Interfaces already calculated (New Solution, Same grid) ##
+b.add_solution_data('tenaca_t-00000001.tec', tolerance, 'tenaca_t-00000001.int')
+b.add_solution_data('tenaca_t-00000002.tec', tolerance, 'tenaca_t-00000002.int')
+## Write unstructured teclot file with field variables data
+b.write_tec('tec_with_data.tec')
+########
+
+####OPTION 3####
+## Just read previously read files
+#b.read_tec('tec_with_data.tec')
+########
+
+##################
+#     STEP 3     #
+##################
+#####################
+#    CALCULATIONS   #
+#####################
+
+## Calculate pressure force components
+#F_p = b.calculate_pressure_forces()
+#print('F_x = {p[0]}, F_y = {p[1]}, F_z = {p[2]}'.format(p = F_p))
+
 
 
 
 #TESTS
 
-#.read_stl('test.stl')
+#b.read_stl('test.stl')
 #b.write_tec_data('from_stl_test.tec')
 #b.write_element_data('test_elem_data.tec')
 #b.read_element_data('test_elem_data.tec')

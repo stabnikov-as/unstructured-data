@@ -3,24 +3,69 @@ import bisect
 
 class unstruct_data(object):
     def __init__(self, edges):
+        # list of [x1,x2,x3] coordinate lists
+        # (list of lists of floats)
         self.points   = []
+
+        # list of coordinates of element vertices
+        # (list of lists of ints)
         self.elements = []
+
+        # list of field data lists in points, for example [p,v,u,M]
+        # (list of lists of floats)
         self.pointData = []
+
+        # list of field data lists in elements, for example [p,v,u,M]
+        # (list of lists of floats)
         self.elemData = []
+
+        # List of names of variables of data in points
+        # (list of lists of strings)
         self.pointVariables = []
+
+        # List of names of variables of data in elements
+        # (list of lists of strings)
         self.elemVariables = []
+
+        # Number of variables in points
+        # (int)
         self.numPointVars = 0
+
+        # Number of variables in elements
+        # (int)
         self.numElemVars = 0
+
+        # Line 2 of header in unformatted tecplot file
+        # (str)
         self.line2 = ''
+
+        # Line 3 of header in unformatted tecplot file
+        # (str)
         self.line3 = ''
+
+        # Number of Elements
+        # (int)
         self.numElements = 0
+
+        # Number of Points
+        # (int)
         self.numPoints = 0
+
+        # Number of Points with data in them (used while reading tecplot solution file)
+        # (int)
         self.numPointsWithData = 0
+
+        # Number of edges in each element
+        # (int)
         self.numEdges = edges
+
+        # Minimal edge length in an element
+        # (see minimal_distance(self) Function)
+        # (float)
         self.minEdgeLength = 0.0
 
 
-    ##READ FUNCTIONS
+    ## READ FUNCTIONS
 
     def read_tec(self, filename):
         '''
@@ -138,7 +183,7 @@ class unstruct_data(object):
                 self.elemData[i] = varline
 
 
-    ##WRITE FUNCTIONS
+    ## WRITE FUNCTIONS
 
     def write_tec(self, filename):
         '''
@@ -149,15 +194,16 @@ class unstruct_data(object):
         print('Writing unformatted tecplot file "{}"'.format(filename))
         with open(filename, 'w') as f_out:
             varlist = 'variables = X, Y, Z '
-            for variable in self.pointVariables:
-                varlist += variable
+            for i in range(3, self.getNumPointVars()):
+                varlist += ', '
+                varlist += self.pointVariables[i]
             varlist += '\n'
             f_out.write(varlist)
             f_out.write(self.line2)
             f_out.write(self.line3)
-            outstring = '{p[0]} {p[1]} {p[2]}'
-            for i in range(len(self.pointVariables)):
-                outstring += '{d[' + str(i) + '}'
+            outstring = '{p[0]} {p[1]} {p[2]} '
+            for i in range(self.getNumPointVars() - 3):
+                outstring += ' {d[' + str(i) + ']}'
             outstring +=  '\n'
             for i in range(self.getNumPoints()):
                 if self.pointData:
@@ -192,9 +238,9 @@ class unstruct_data(object):
             f_out.write('\n')
 
 
-    ##INTERPOLATING FROM TECPLOT
+    ## INTERPOLATING FROM TECPLOT
 
-    def add_solution_data(self, filename, tolerance):
+    def add_solution_data(self, filename, tolerance, interface = None):
         '''
         Read formatted tecplot field file from NTS CODE
         !!!
@@ -203,10 +249,11 @@ class unstruct_data(object):
         !!!
         :param filename: (string) name of file to read
         :param tolerance: (float) tolerance for finding points in dataset
+        :param interface: (str), NOT MANDATORY. name of a file containing interfaces connecting tec points with stl points
         :return:
         '''
         print('Reading tecplot file "{}"'.format(filename))
-        #tolerance = self.getMinEdgeLen()
+
         with open(filename, 'r') as f_in:
             read_data = f_in.readlines()
         stringData = ['#']
@@ -214,16 +261,26 @@ class unstruct_data(object):
         while stringData[0] == '#':
             stringData = read_data[ind].split()
             ind += 1
-        self.pointVariables.append(stringData[2])
-        self.pointVariables.append(stringData[3])
+        variables = []
+        variables.append(stringData[2])
+        variables.append(stringData[3])
         while read_data[ind].split()[0] != 'zone':
-            self.pointVariables.append(read_data[ind][:-1])
+            variables.append(read_data[ind][:-1])
             ind += 1
+        self.pointVariables = variables
+        if not interface:
+            interface = filename.rstrip('.tec') + '.int'
+            isInterf = False
+            open(interface, 'w+').close()
+        else:
+            isInterf = True
+        ind_int = 1
         while ind != len(read_data):
-            ind = self.readZone(ind, read_data, tolerance)
+            ind, ind_int = self.readZone(ind, ind_int, read_data, tolerance, interface, isInterf)
             ind += 1
+            ind_int += 1
 
-    def readZone(self, ind, read_data, tolerance):
+    def readZone(self, ind, ind_int, read_data, tolerance, interface, isInterf):
         '''
         Read tecplot zone from NTS CODE solution
         called from add_solution_data function for each zone
@@ -232,41 +289,60 @@ class unstruct_data(object):
         :param tolerance: (float) tolerance to finding a point
         :return:
         '''
+        if isInterf:
+            int_f = open(interface, 'r')
+            interf_data = int_f.readlines()
+        else:
+            int_f = open(interface, 'a')
+
         stringData = read_data[ind].split()
         Ni, Nj = int(stringData[2]), int(stringData[4])
         self.numPointVars = len(self.getPointVars())
         ind += 1
         zoneName = read_data[ind].strip('T=" \n')
+        if not isInterf: int_f.write('T = {}\n'.format(zoneName))
         print('Scanning zone "{}"'.format(zoneName))
         print('Number of points: {}'.format(Ni * Nj))
         foundPoints = 0
         self.prepare_point_data()
         for i in range(Ni):
             for j in range(Nj):
+
                 if ind % 1000 == 0:
                     print(ind)
                 ind += 1
                 stringData = read_data[ind].split()
-
                 pointData = stringData[3:]
-
-                found, index = self.search_point(stringData[:3], tolerance)
-
-                if found:
-                    foundPoints += 1
-                    for variable in range(len(pointData)):
-                        self.pointData[index].append(float(pointData[variable]))
+                floatData = []
+                if not isInterf:
+                    found, index = self.search_point(stringData[:3], tolerance)
+                    if found:
+                        foundPoints += 1
+                        for variable in range(len(pointData)):
+                            floatData.append(float(pointData[variable]))
+                        self.pointData[index] = floatData
+                        int_f.write('{} {} {}\n'.format(i, j, index))
+                    else:
+                        print(index)
                 else:
-                    print(index)
-
+                    if int(interf_data[ind_int].split()[0]) == i and int(interf_data[ind_int].split()[1]) == j:
+                        index = int(interf_data[ind_int].split()[2])
+                        foundPoints += 1
+                        for variable in range(len(pointData)):
+                            floatData.append(float(pointData[variable]))
+                        self.pointData[index] = floatData
+                    else:
+                        raise Exception('Coordinates in interface file not match grid file')
+                    ind_int += 1
         self.numPointsWithData += foundPoints
 
         print('Found points for {}, out of {} in this zone'.format(foundPoints, Ni*Nj))
         print('Total found points in this geometry: {} out of 78607'.format(self.getNumPointsWithData()))#, self.getNumPoints()))
-        return ind
+
+        return ind, ind_int
 
 
-    ###UTILITIES
+    ## UTILITIES
 
     def prepare_point_data(self):
         '''
@@ -336,8 +412,38 @@ class unstruct_data(object):
                 return True, i
         return False, -2
 
+    def calculate_pressure_forces(self, pressure_ind):
+        '''
+        Calculates pressure forces on the surface
+        :param pressure_ind: (int) index of pressure variable in dataset
+        :return: (list of floats) Force components
+        '''
+        F = [0, 0, 0]
+        for k in range(self.getNumElements()):
+            x = []
+            y = []
+            z = []
+            dist = []
+            pres = 0
+            pointIndices = self.elements[i]
+            for i in range(3):
+                x.append(self.points[pointIndices[i]][0])
+                y.append(self.points[pointIndices[i]][0])
+                z.append(self.points[pointIndices[i]][0])
+                pres += self.pointData[pointIndices[i]][pressure_ind]
+            pres = pres / 3.0
+            for i in range(3):
+                j = (i + 1) % 2
+                dist.append = ((x[i] - x[j])**2 + (y[i] - y[j])**2 + (z[i] - z[j])**2)**0.5
+                area = sum(dist)/2.0
+            norm = self.elemData[i]
+            for i in range(3):
+                F[i] += norm[i] * area * pres
+        return F
+
 
     ## GETTERS
+
     def getNumElements(self):
         return self.numElements
     def getNumPoints(self):
