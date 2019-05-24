@@ -38,14 +38,14 @@ b = unstruct_data(3)
 #b.add_solution_data('tenaca_t-00000002.tec', tolerance) # Takes ~ 1 hour
 
 ## Write unstructured teclot file with data
-b.write_tec_data('tec_with_data.tec')
+#b.write_tec_data('tec_with_data.tec')
 
 
 
 #TESTS
 
-#b.read_stl('test.stl')
-#b.write_tec('from_stl_test.tec')
+#.read_stl('test.stl')
+#b.write_tec_data('from_stl_test.tec')
 #b.write_element_data('test_elem_data.tec')
 #b.read_element_data('test_elem_data.tec')
 #b.write_element_data('test_elem_data1.tec')

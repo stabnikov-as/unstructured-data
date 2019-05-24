@@ -11,8 +11,8 @@ class unstruct_data(object):
         self.elemVariables = []
         self.numPointVars = 0
         self.numElemVars = 0
-        self.line1 = ''
         self.line2 = ''
+        self.line3 = ''
         self.numElements = 0
         self.numPoints = 0
         self.numPointsWithData = 0
@@ -43,20 +43,26 @@ class unstruct_data(object):
             self.numEdges = 3
 
         self.__init__(self.getNumEdges())
-
-        self.line1 = read_data[0]
-        self.line2 = read_data[1]
-        self.numPoints = int(read_data[0].split()[2])
-        self.numElements = int(read_data[0].split()[4])
-
+        ind0 = 0
+        if read_data[0].split()[0] in ('Variables', 'variables', 'variables=', 'Variables='):
+            self.pointVariables = read_data[0].split()[1:]
+            self.pointVariables[0].lstrip(' =')
+            ind0 = 1
+        self.line1 = read_data[ind0]
+        self.line2 = read_data[ind0 + 1]
+        self.numPoints = int(read_data[ind0].split()[2])
+        self.numElements = int(read_data[ind0].split()[4])
+        if len(read_data[ind0+2].split()) > 3: isData = True
         for i in range(self.getNumPoints()):
-            ind = i + 2
-            coords = read_data[ind].split()
-            for j in range(3): coords[j] = float(coords[j])
-            self.points.append(coords)
+            ind = i + 2 + ind0
+            line_data = read_data[ind].split()
+            for j in range(3): line_data[j] = float(line_data[j])
+            self.points.append(line_data)
+            if isData:
+                self.pointData.append(line_data[2:])
 
         for i in range(self.getNumElements()):
-            ind = i + 2 + 1 + self.getNumPoints()
+            ind = i + 2 + ind0 + 1 + self.getNumPoints()
             elems = read_data[ind].split()
             for j in range(len(elems)): elems[j] = int(elems[j])
             self.elements.append(elems)
@@ -134,19 +140,28 @@ class unstruct_data(object):
 
     def write_tec(self, filename):
         '''
-        Writes unformatted tecplot file
-        !!!
-         DOESNT WRITE DATA, ONLY GRID
-         !!!
+        Write unformatted tecplot file with point data
         :param filename: (str) name of the file to write
-        :return: doesn't return anythng
+        :return:
         '''
         print('Writing unformatted tecplot file "{}"'.format(filename))
         with open(filename, 'w') as f_out:
-            f_out.write(self.line1)
+            varlist = 'variables = X, Y, Z '
+            for variable in self.pointVariables:
+                varlist += variable
+            varlist += '\n'
+            f_out.write(varlist)
             f_out.write(self.line2)
+            f_out.write(self.line3)
+            outstring = '{p[0]} {p[1]} {p[2]}'
+            for i in range(len(self.pointVariables)):
+                outstring += '{d[' + str(i) + '}'
+            outstring +=  '\n'
             for i in range(self.getNumPoints()):
-                f_out.write('{p[0]} {p[1]} {p[2]}\n'.format(p = self.points[i]))
+                if self.pointData:
+                    f_out.write(outstring.format(p = self.points[i], d = self.pointData[i]))
+                else:
+                    f_out.write(outstring.format(p=self.points[i]))
             f_out.write('\n')
             elems_line = ''
             for j in range(self.getNumEdges()):
@@ -174,35 +189,7 @@ class unstruct_data(object):
                 f_out.write('{p[0]} {p[1]} {p[2]}\n'.format(p = self.elemData[i]))
             f_out.write('\n')
 
-    def write_tec_data(self, filename):
-        '''
-        Write unformatted tecplot file with point data
-        Probably can replace write_tec(self, filename), but not tested
-        :param filename: (str) name of the file to write
-        :return:
-        '''
-        print('Writing unformatted tecplot file "{}"'.format(filename))
-        with open(filename, 'w') as f_out:
-            varlist = 'variables =X, Y, Z'
-            for variable in self.pointVariables:
-                varlist += variable
-            varlist += '\n'
-            f_out.write(varlist)
-            f_out.write(self.line1)
-            f_out.write(self.line2)
-            outstring = '{p[0]} {p[1]} {p[2]}'
-            for i in range(len(self.pointVariables)):
-                outstring += '{d[' + str(i) + '}'
-            outstring +=  '\n'
-            for i in range(self.getNumPoints()):
-                f_out.write(outstring.format(p = self.points[i], d = self.pointData[i]))
-            f_out.write('\n')
-            elems_line = ''
-            for j in range(self.getNumEdges()):
-                elems_line += '  {e[' + str(j) + ']}  '
-            elems_line += '\n'
-            for i in range(self.getNumElements()):
-                f_out.write(elems_line.format(e = self.elements[i]))
+
 
 
     ##INTERPOLATING FROM TECPLOT
