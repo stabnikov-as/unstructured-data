@@ -20,8 +20,6 @@ class unstruct_data(object):
         self.minEdgeLength = 0.0
 
 
-
-
     ##READ FUNCTIONS
 
     def read_tec(self, filename):
@@ -112,6 +110,26 @@ class unstruct_data(object):
         self.line2 = 'T="Block_1         "\n'
         print('Numelements = {}'.format(self.getNumElements()))
 
+    def read_element_data(self, filename):
+        '''
+        Reads element data from a previously written file
+        !!!
+            Only works for 3 variables that are most likely n_x, n_y, n_z
+        !!!
+        :param filename: (str) name of the file to read
+        :return: doesn't return anythng
+        '''
+        if not self.elemData: self.prepare_elem_data()
+        print('Reading element data "{}"'.format(filename))
+        with open(filename, 'r') as f_out:
+            self.numElemVars = int(f_out.readline())
+            self.elemVariables = f_out.readline().rstrip('\n').split(', ')
+            for i in range(self.getNumElements()):
+                varline = f_out.readline().split()
+                for j in range(len(varline)): varline[j] = float(varline[j])
+                self.elemData[i] = varline
+
+
     ##WRITE FUNCTIONS
 
     def write_tec(self, filename):
@@ -149,11 +167,12 @@ class unstruct_data(object):
         print('Writing element data "{}"'.format(filename))
         with open(filename, 'w') as f_out:
             f_out.write(str(self.getNumElemVars()))
-            f_out.write('{p[0]}, {p[1]}, {p[2]}'.format(p = self.getNumElemVars))
+            f_out.write('\n')
+            f_out.write('{p[0]}, {p[1]}, {p[2]}'.format(p = self.elemVariables))
+            f_out.write('\n')
             for i in range(self.getNumElements()):
                 f_out.write('{p[0]} {p[1]} {p[2]}\n'.format(p = self.elemData[i]))
             f_out.write('\n')
-
 
     def write_tec_data(self, filename):
         '''
@@ -184,6 +203,7 @@ class unstruct_data(object):
             elems_line += '\n'
             for i in range(self.getNumElements()):
                 f_out.write(elems_line.format(e = self.elements[i]))
+
 
     ##INTERPOLATING FROM TECPLOT
 
@@ -258,6 +278,7 @@ class unstruct_data(object):
         print('Total found points in this geometry: {} out of 78607'.format(self.getNumPointsWithData()))#, self.getNumPoints()))
         return ind
 
+
     ###UTILITIES
 
     def prepare_point_data(self):
@@ -267,6 +288,14 @@ class unstruct_data(object):
         '''
         for point in self.points:
             self.pointData.append([])
+
+    def prepare_elem_data(self):
+        '''
+        utility function: makes empty list to put elem data later on
+        :return: no return
+        '''
+        for element in self.elements:
+            self.elemData.append([])
 
     def minimal_distance(self):
         '''
@@ -319,6 +348,7 @@ class unstruct_data(object):
             if dist < tolerance:
                 return True, i
         return False, -2
+
 
     ## GETTERS
     def getNumElements(self):
