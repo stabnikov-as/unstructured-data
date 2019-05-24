@@ -103,10 +103,10 @@ class unstruct_data(object):
         for i in range(self.getNumPoints()):
             ind = i + 2 + ind0
             line_data = read_data[ind].split()
-            for j in range(3): line_data[j] = float(line_data[j])
-            self.points.append(line_data)
+            for j in range(len(line_data)): line_data[j] = float(line_data[j])
+            self.points.append(line_data[:3])
             if isData:
-                self.pointData.append(line_data[2:])
+                self.pointData.append(line_data[3:])
 
         for i in range(self.getNumElements()):
             ind = i + 2 + ind0 + 1 + self.getNumPoints()
@@ -193,7 +193,7 @@ class unstruct_data(object):
         '''
         print('Writing unformatted tecplot file "{}"'.format(filename))
         with open(filename, 'w') as f_out:
-            varlist = 'variables = X, Y, Z '
+            varlist = 'variables= X, Y, Z'
             for i in range(3, self.getNumPointVars()):
                 varlist += ', '
                 varlist += self.pointVariables[i]
@@ -423,22 +423,37 @@ class unstruct_data(object):
             x = []
             y = []
             z = []
+            norm = [0,0,0]
             dist = []
             pres = 0
-            pointIndices = self.elements[i]
+            pointIndices = [self.elements[k][i] - 1 for i in range(3)]
             for i in range(3):
                 x.append(self.points[pointIndices[i]][0])
-                y.append(self.points[pointIndices[i]][0])
-                z.append(self.points[pointIndices[i]][0])
+                y.append(self.points[pointIndices[i]][1])
+                z.append(self.points[pointIndices[i]][2])
                 pres += self.pointData[pointIndices[i]][pressure_ind]
             pres = pres / 3.0
+            vx1 = x[0] - x[1]
+            vy1 = y[0] - y[1]
+            vz1 = z[0] - z[1]
+            vx2 = x[1] - x[2]
+            vy2 = y[1] - y[2]
+            vz2 = z[1] - z[2]
+            n_l = ((vy1 * vz2 - vz1 * vy2)**2 + (vz1 * vx2 - vx1 * vz2)**2 + (vx1 * vy2 - vy1 * vx2)**2)**0.5
+            norm[0] = (vy1 * vz2 - vz1 * vy2)/n_l
+            norm[1] = (vz1 * vx2 - vx1 * vz2)/n_l
+            norm[2] = (vx1 * vy2 - vy1 * vx2)/n_l
             for i in range(3):
                 j = (i + 1) % 2
-                dist.append = ((x[i] - x[j])**2 + (y[i] - y[j])**2 + (z[i] - z[j])**2)**0.5
-                area = sum(dist)/2.0
-            norm = self.elemData[i]
+                dist.append(((x[i] - x[j]) ** 2 + (y[i] - y[j]) ** 2 + (z[i] - z[j]) ** 2) ** 0.5)
+            per = sum(dist) / 2.0
+            a1 = per - dist[0]
+            b1 = per - dist[1]
+            c1 = per - dist[2]
+            area = (per*(a1)*(b1)*(c1))**0.5
+
             for i in range(3):
-                F[i] += norm[i] * area * pres
+                F[i] += norm[i] * pres * area
         return F
 
 
