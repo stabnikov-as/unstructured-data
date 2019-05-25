@@ -82,12 +82,6 @@ class unstruct_data(object):
 
         with open(filename, 'r') as f_in:
             read_data = f_in.readlines()
-        element_type = read_data[0].split()[6].lstrip('ET=')
-
-        if element_type == 'QUADRILATERAL':
-            self.numEdges = 4
-        elif element_type == 'TRIANGULAR':
-            self.numEdges = 3
 
         self.__init__(self.getNumEdges())
         ind0 = 0
@@ -97,6 +91,12 @@ class unstruct_data(object):
             ind0 = 1
         self.line2 = read_data[ind0]
         self.line3 = read_data[ind0 + 1]
+        element_type = read_data[ind0].split()[6].lstrip('ET=')
+
+        if element_type == 'QUADRILATERAL':
+            self.numEdges = 4
+        elif element_type == 'TRIANGULAR':
+            self.numEdges = 3
         self.numPoints = int(read_data[ind0].split()[2])
         self.numElements = int(read_data[ind0].split()[4])
         if len(read_data[ind0+2].split()) > 3: isData = True
@@ -308,7 +308,7 @@ class unstruct_data(object):
         for i in range(Ni):
             for j in range(Nj):
 
-                if ind % 1000 == 0:
+                if ind % 5000 == 0:
                     print(ind)
                 ind += 1
                 stringData = read_data[ind].split()
@@ -427,10 +427,11 @@ class unstruct_data(object):
                 points.append(self.points[pointIndices[i]])
                 pres += self.pointData[pointIndices[i]][pressure_ind]
             pres = pres / 3.0
-
+            a = points[0]
+            b = points[1]
+            c = points[2]
             norm = self.calculate_norm(a, b, c)
             area = self.calculate_area(a, b, c)
-
             for i in range(3):
                 F[i] += norm[i] * pres * area
         return F
