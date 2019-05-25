@@ -420,41 +420,75 @@ class unstruct_data(object):
         '''
         F = [0, 0, 0]
         for k in range(self.getNumElements()):
-            x = []
-            y = []
-            z = []
-            norm = [0,0,0]
-            dist = []
             pres = 0
             pointIndices = [self.elements[k][i] - 1 for i in range(3)]
+            points = []
             for i in range(3):
-                x.append(self.points[pointIndices[i]][0])
-                y.append(self.points[pointIndices[i]][1])
-                z.append(self.points[pointIndices[i]][2])
+                points.append(self.points[pointIndices[i]])
                 pres += self.pointData[pointIndices[i]][pressure_ind]
             pres = pres / 3.0
-            vx1 = x[0] - x[1]
-            vy1 = y[0] - y[1]
-            vz1 = z[0] - z[1]
-            vx2 = x[1] - x[2]
-            vy2 = y[1] - y[2]
-            vz2 = z[1] - z[2]
-            n_l = ((vy1 * vz2 - vz1 * vy2)**2 + (vz1 * vx2 - vx1 * vz2)**2 + (vx1 * vy2 - vy1 * vx2)**2)**0.5
-            norm[0] = (vy1 * vz2 - vz1 * vy2)/n_l
-            norm[1] = (vz1 * vx2 - vx1 * vz2)/n_l
-            norm[2] = (vx1 * vy2 - vy1 * vx2)/n_l
-            for i in range(3):
-                j = (i + 1) % 2
-                dist.append(((x[i] - x[j]) ** 2 + (y[i] - y[j]) ** 2 + (z[i] - z[j]) ** 2) ** 0.5)
-            per = sum(dist) / 2.0
-            a1 = per - dist[0]
-            b1 = per - dist[1]
-            c1 = per - dist[2]
-            area = (per*(a1)*(b1)*(c1))**0.5
+
+            norm = self.calculate_norm(a, b, c)
+            area = self.calculate_area(a, b, c)
 
             for i in range(3):
                 F[i] += norm[i] * pres * area
         return F
+
+    def calculate_area(self, a, b, c):
+        '''
+        Calculates area of a triangle
+        :param a: (list of 3 floats) coordinates of first point
+        :param b: (list of 3 floats) coordinates of second point
+        :param c: (list of 3 floats) coordinates of third point
+        :return: (float) Area
+        '''
+        edges = []
+        vertices = [a,b,c]
+        for i in range(3):
+            j = (i + 1) % 3
+            edges.append(((vertices[i][0] - vertices[j][0]) ** 2 \
+                        + (vertices[i][1] - vertices[j][1]) ** 2 \
+                        + (vertices[i][2] - vertices[j][2]) ** 2)** 0.5)
+        per = sum(edges) / 2.0
+        a1 = per - edges[0]
+        b1 = per - edges[1]
+        c1 = per - edges[2]
+        area = (per*(a1)*(b1)*(c1))**0.5
+
+        return area
+
+    def calculate_norm(self, a, b, c):
+        '''
+        Calculates normal vector of a triangle
+        :param a: (list of 3 floats) coordinates of first point
+        :param b: (list of 3 floats) coordinates of second point
+        :param c: (list of 3 floats) coordinates of third point
+        :return: (float) Area
+        '''
+        n = []
+        vect = [[],[]]
+        coord = [a,b,c]
+        n = [[],[],[]]
+        for i in range(3):
+            for j in range(2):
+                vect[j].append(coord[j+1][i] - coord[0][i])
+        for i in range(3):
+            sign = (-1)**i
+            indices = [0,1,2]
+            indices.remove(i)
+            i1 = indices[0]
+            i2 = indices[1]
+            n[i] = vect[0][i1]*vect[1][i2] - vect[0][i2]*vect[1][i1]
+            n[i] *= sign
+        mod = 0
+        for i in range(3):
+            mod += n[i]**2
+        mod = mod**0.5
+        n = [n[i]/mod for i in range(3)]
+
+
+        return n
 
 
     ## GETTERS
