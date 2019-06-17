@@ -49,7 +49,7 @@ b.read_tec('tec/from_stl_wing_surface.tec')
 b.add_solution_data('tec/tenaca_t-00000001.tec', tolerance, 'int/tenaca_t-00000001.int')
 b.add_solution_data('tec/tenaca_t-00000002.tec', tolerance, 'int/tenaca_t-00000002.int')
 ## Write unstructured teclot file with field variables data
-b.write_tec('tec/tec_with_data.tec')
+#b.write_tec('tec/tec_with_data.tec')
 ########
 
 ####OPTION 3####
@@ -69,22 +69,40 @@ b.write_tec('tec/tec_with_data.tec')
 
 pres      = True
 presIndex = 0
-
+F_f = []
 F_p, area  = b.calculate_pressure_forces(pressure_ind = presIndex, isPressure = pres)
+F_f.append(b.calculate_shear_forces(1))
+F_f.append(b.calculate_shear_forces(2))
+F_f.append(b.calculate_shear_forces(3))
 
 #area = 1.0
-#Vel0 = 2.95e +02
+Vel0 = 2.95e+02
 #R0   = 1.045e-1
-Vel0 = 1.0
+#Vel0 = 1.0
 R0   = 1.0
 
 #scale = area * R0 * Vel0**2 / 2
 scale = 1.0
+scale_f = Vel0
 
 Cd_p = [F_p[i] / scale for i in range(3)]
+Cd_f = [F_f[i] / scale_f for i in range(3)]
 
 print(' F_x = {p[0]},  F_y = {p[1]},  F_z = {p[2]}'.format(p =  F_p))
 print('Cp_x = {p[0]}, Cp_y = {p[1]}, Cp_z = {p[2]}'.format(p = Cd_p))
 
+print(' F_fx = {p[0]},  F_fy = {p[1]},  F_fz = {p[2]}'.format(p =  F_f))
+print('Cpf_x = {p[0]}, Cpf_y = {p[1]}, Cpf_z = {p[2]}'.format(p = Cd_f))
 
 
+
+
+
+#TESTS
+
+
+#b.read_stl('test.stl')
+#b.write_tec_data('from_stl_test.tec')
+#b.write_element_data('test_elem_data.tec')
+#b.read_element_data('test_elem_data.tec')
+#b.write_element_data('test_elem_data1.tec')

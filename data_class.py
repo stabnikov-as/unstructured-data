@@ -416,9 +416,11 @@ class unstruct_data(object):
         '''
         Calculates pressure forces on the surface
         :param pressure_ind: (int) index of pressure variable in dataset
-        :return: (list of floats) Force components
+        :param isPressure: (bool) if True, calculate pressure forces
+                                  if False, calculate area projection on axis
+        :return: (tuple(list of floats, float)) Force components and integral area
         '''
-        print('Calculating Forces')
+        print('Calculating pressure Forces')
         F = [0, 0, 0]
         A = 0
         for k in range(self.getNumElements()):
@@ -428,7 +430,7 @@ class unstruct_data(object):
             for i in range(3):
                 points.append(self.points[pointIndices[i]])
                 pres += self.pointData[pointIndices[i]][pressure_ind]
-            pres = pres / 3.0
+            pres /= 3.0
             if not isPressure: pres = 1.0
             a = points[0]
             b = points[1]
@@ -439,6 +441,29 @@ class unstruct_data(object):
                 F[i] += norm[i] * pres * area
             A += area
         return F, A
+
+    def calculate_shear_forces(self, velocity_ind):
+        '''
+        Calculates pressure forces on the surface
+        :param velocity_ind_ind: (int) index of pressure variable in dataset
+        :return: (float) Force component
+        '''
+        print('Calculating friction Forces')
+        F = 0.0
+        for k in range(self.getNumElements()):
+            dVeldN = 0
+            pointIndices = [self.elements[k][i] - 1 for i in range(3)]
+            points = []
+            for i in range(3):
+                points.append(self.points[pointIndices[i]])
+                dVeldN += self.pointData[pointIndices[i]][velocity_ind]
+            dVeldN /= 3.0
+            a = points[0]
+            b = points[1]
+            c = points[2]
+            area = self.calculate_triangle_area(a, b, c)
+            F += dVeldN * area
+        return F
 
     def calculate_triangle_area(self, a, b, c):
         '''
