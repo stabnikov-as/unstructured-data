@@ -412,13 +412,15 @@ class unstruct_data(object):
                 return True, i
         return False, -2
 
-    def calculate_pressure_forces(self, pressure_ind):
+    def calculate_pressure_forces(self, pressure_ind, isPressure = True):
         '''
         Calculates pressure forces on the surface
         :param pressure_ind: (int) index of pressure variable in dataset
         :return: (list of floats) Force components
         '''
+        print('Calculating Forces')
         F = [0, 0, 0]
+        A = 0
         for k in range(self.getNumElements()):
             pres = 0
             pointIndices = [self.elements[k][i] - 1 for i in range(3)]
@@ -427,16 +429,18 @@ class unstruct_data(object):
                 points.append(self.points[pointIndices[i]])
                 pres += self.pointData[pointIndices[i]][pressure_ind]
             pres = pres / 3.0
+            if not isPressure: pres = 1.0
             a = points[0]
             b = points[1]
             c = points[2]
             norm = self.calculate_norm(a, b, c)
-            area = self.calculate_area(a, b, c)
+            area = self.calculate_triangle_area(a, b, c)
             for i in range(3):
                 F[i] += norm[i] * pres * area
-        return F
+            A += area
+        return F, A
 
-    def calculate_area(self, a, b, c):
+    def calculate_triangle_area(self, a, b, c):
         '''
         Calculates area of a triangle
         :param a: (list of 3 floats) coordinates of first point
@@ -455,7 +459,7 @@ class unstruct_data(object):
         a1 = per - edges[0]
         b1 = per - edges[1]
         c1 = per - edges[2]
-        area = (per*(a1)*(b1)*(c1))**0.5
+        area = (per*a1*b1*c1)**0.5
 
         return area
 
@@ -465,9 +469,8 @@ class unstruct_data(object):
         :param a: (list of 3 floats) coordinates of first point
         :param b: (list of 3 floats) coordinates of second point
         :param c: (list of 3 floats) coordinates of third point
-        :return: (float) Area
+        :return:  (list of 3 floats) Normal vector components
         '''
-        n = []
         vect = [[],[]]
         coord = [a,b,c]
         n = [[],[],[]]
@@ -487,7 +490,6 @@ class unstruct_data(object):
             mod += n[i]**2
         mod = mod**0.5
         n = [n[i]/mod for i in range(3)]
-
 
         return n
 

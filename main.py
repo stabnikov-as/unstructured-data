@@ -67,25 +67,24 @@ b.write_tec('tec/tec_with_data.tec')
 
 ## Calculate pressure force components
 
-Vel0 = 2.95e+02
-R0   = 1.045e-1
-area = 1.0
+pres      = True
+presIndex = 0
 
+F_p, area  = b.calculate_pressure_forces(pressure_ind = presIndex, isPressure = pres)
 
-F_p  = b.calculate_pressure_forces(pressure_ind = 0)
-Cd_p = [F_p[i] * 2 / R0 / Vel0**2 for i in range(3)]
+#area = 1.0
+#Vel0 = 2.95e +02
+#R0   = 1.045e-1
+Vel0 = 1.0
+R0   = 1.0
+
+#scale = area * R0 * Vel0**2 / 2
+scale = 1.0
+
+Cd_p = [F_p[i] / scale for i in range(3)]
 
 print(' F_x = {p[0]},  F_y = {p[1]},  F_z = {p[2]}'.format(p =  F_p))
 print('Cp_x = {p[0]}, Cp_y = {p[1]}, Cp_z = {p[2]}'.format(p = Cd_p))
 
 
 
-
-#TESTS
-
-
-#b.read_stl('test.stl')
-#b.write_tec_data('from_stl_test.tec')
-#b.write_element_data('test_elem_data.tec')
-#b.read_element_data('test_elem_data.tec')
-#b.write_element_data('test_elem_data1.tec')
